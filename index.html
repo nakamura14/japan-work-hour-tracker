@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Work Hour Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useMemo, useState } = React;
+
+      const hourOptions = Array.from({ length: 24 }, (_, index) =>
+        String(index).padStart(2, "0")
+      );
+
+      const minuteOptions = Array.from({ length: 60 }, (_, index) =>
+        String(index).padStart(2, "0")
+      );
+
+      const translations = {
+        zh: {
+          languageName: "中文",
+          plannerTag: "Work Hour Planner",
+          title: "留学生 7 天排班计算表单",
+          subtitle:
+            "填写每天的开始时间、结束时间、休息时间和时薪，页面会实时更新每周总工时、预计周薪和税务估算。",
+          ruleTitle: "实时规则",
+          ruleLine1: "休息时间会从班次总时长中扣除。",
+          ruleLine2: "22:00 之后的工时按 25% 深夜手当加成。",
+          ruleLine3: "系统会自动支持跨午夜班次。",
+          matrixTitle: "7 天排班矩阵",
+          matrixHint:
+            "在手机端，每一行会切换成卡片布局，方便快速录入。",
+          clearAll: "一键清空",
+          day: "星期",
+          startTime: "开始时间",
+          endTime: "结束时间",
+          hourPlaceholder: "时",
+          minutePlaceholder: "分",
+          breakMinutes: "休息时间（分钟）",
+          hourlyWage: "当天时薪（日元）",
+          dailySummary: "当日小计",
+          dailyPay: "日薪",
+          lateNight: "深夜",
+          statusTitle: "工时状态",
+          weeklyHours: "本周预计总工时",
+          incomeTitle: "收入汇总",
+          incomeHint:
+            "根据每日时薪、休息时间和深夜手当实时计算。",
+          weeklyIncome: "预计周薪",
+          monthlyGross: "月度税前估算",
+          withholdingTax: "预扣税额",
+          monthlyNet: "月度税后收入",
+          notesTitle: "说明",
+          note1: "每一天都可以单独填写时间段、休息时间和时薪。",
+          note2: "如果结束时间早于开始时间，系统会按跨午夜班次处理。",
+          note3: "22:00 到次日 05:00 的时段按 25% 深夜手当计算。",
+          note4: "月度税前收入超过 88,000 日元时，按 5% 简化税率预扣。",
+          safe: "安全",
+          safeHint: "当前本周总工时处于安全范围内。",
+          normal: "正常",
+          normalHint: "工时仍可控，但建议继续关注累计时长。",
+          warning: "预警",
+          warningHint: "建议下周适当减少排班工时。",
+          danger: "危险",
+          dangerHint: "!! 超过法定上限 !! 本周总工时已经超过 28 小时。",
+          hoursUnit: "小时",
+        },
+        en: {
+          languageName: "English",
+          plannerTag: "Work Hour Planner",
+          title: "7-Day Shift Calculator for International Students",
+          subtitle:
+            "Fill in start time, end time, break time, and hourly wage for each day. The page updates weekly hours, weekly pay, and tax estimate in real time.",
+          ruleTitle: "Live rules",
+          ruleLine1: "Break time is deducted from the total shift length.",
+          ruleLine2: "Late-night hours after 22:00 receive a 25% bonus.",
+          ruleLine3: "Overnight shifts are supported automatically.",
+          matrixTitle: "7-day shift matrix",
+          matrixHint:
+            "On mobile, each row becomes a card so the form stays easy to read.",
+          clearAll: "Clear all",
+          day: "Day",
+          startTime: "Start time",
+          endTime: "End time",
+          hourPlaceholder: "HH",
+          minutePlaceholder: "MM",
+          breakMinutes: "Break (minutes)",
+          hourlyWage: "Hourly wage (JPY)",
+          dailySummary: "Daily summary",
+          dailyPay: "Daily pay",
+          lateNight: "Late-night",
+          statusTitle: "Work status",
+          weeklyHours: "Estimated weekly hours",
+          incomeTitle: "Income summary",
+          incomeHint:
+            "Calculated from daily wage, break time, and late-night bonus.",
+          weeklyIncome: "Estimated weekly pay",
+          monthlyGross: "Estimated monthly gross",
+          withholdingTax: "Withholding tax",
+          monthlyNet: "Estimated monthly net",
+          notesTitle: "Notes",
+          note1: "Each day can have its own time range, break, and wage.",
+          note2: "If end time is earlier than start time, the shift crosses midnight.",
+          note3: "22:00 to 05:00 is calculated with a 25% late-night bonus.",
+          note4: "If monthly gross exceeds JPY 88,000, 5% withholding applies.",
+          safe: "Safe",
+          safeHint: "Your weekly hours are currently in a safe range.",
+          normal: "Standard",
+          normalHint: "Hours are still manageable, but keep tracking them.",
+          warning: "Warning",
+          warningHint: "Consider reducing next week's shift hours.",
+          danger: "Danger",
+          dangerHint: "!! Over the legal limit !! Weekly hours exceed 28 hours.",
+          hoursUnit: "h",
+        },
+        ja: {
+          languageName: "日本語",
+          plannerTag: "Work Hour Planner",
+          title: "留学生向け 7日間シフト計算フォーム",
+          subtitle:
+            "毎日の開始時間、終了時間、休憩時間、時給を入力すると、週間労働時間、週給、税額見込みがリアルタイムで更新されます。",
+          ruleTitle: "反映されるルール",
+          ruleLine1: "休憩時間はシフト総時間から差し引かれます。",
+          ruleLine2: "22:00以降の時間帯には25%の深夜手当を加算します。",
+          ruleLine3: "日付をまたぐシフトにも自動対応します。",
+          matrixTitle: "7日間シフト入力表",
+          matrixHint:
+            "スマホでは各行がカード表示になり、移動中でも入力しやすくなります。",
+          clearAll: "一括クリア",
+          day: "曜日",
+          startTime: "開始時間",
+          endTime: "終了時間",
+          hourPlaceholder: "時",
+          minutePlaceholder: "分",
+          breakMinutes: "休憩時間（分）",
+          hourlyWage: "時給（円）",
+          dailySummary: "当日集計",
+          dailyPay: "日給",
+          lateNight: "深夜",
+          statusTitle: "工時ステータス",
+          weeklyHours: "今週の予想総工時",
+          incomeTitle: "収入サマリー",
+          incomeHint:
+            "日別時給、休憩時間、深夜手当をもとに自動計算しています。",
+          weeklyIncome: "予想週給",
+          monthlyGross: "月間税引前見込み",
+          withholdingTax: "源泉徴収額",
+          monthlyNet: "月間手取り見込み",
+          notesTitle: "補足",
+          note1: "各曜日ごとに時間帯、休憩、時給を個別に設定できます。",
+          note2: "終了時間が開始時間より早い場合は、翌日までの勤務として扱います。",
+          note3: "22:00から翌05:00までは25%の深夜手当を加算します。",
+          note4: "月間税引前収入が88,000円を超える場合は5%を源泉徴収します。",
+          safe: "安全",
+          safeHint: "今週の総工時は安全圏にあります。",
+          normal: "通常",
+          normalHint: "まだ許容範囲ですが、累計時間を引き続き確認してください。",
+          warning: "警告",
+          warningHint: "来週は勤務時間を少し減らすことをおすすめします。",
+          danger: "危険",
+          dangerHint: "!! 法定上限超過 !! 週28時間を超えています。",
+          hoursUnit: "時間",
+        },
+        vi: {
+          languageName: "Tiếng Việt",
+          plannerTag: "Work Hour Planner",
+          title: "Biểu mẫu tính ca làm 7 ngày cho du học sinh",
+          subtitle:
+            "Nhập giờ bắt đầu, giờ kết thúc, thời gian nghỉ và mức lương theo giờ cho từng ngày. Trang sẽ cập nhật tổng giờ làm, lương tuần và thuế tạm tính theo thời gian thực.",
+          ruleTitle: "Quy tắc áp dụng",
+          ruleLine1: "Thời gian nghỉ sẽ được trừ khỏi tổng thời lượng ca làm.",
+          ruleLine2: "Khung giờ sau 22:00 được cộng thêm 25% phụ cấp ca đêm.",
+          ruleLine3: "Tự động hỗ trợ ca làm qua nửa đêm.",
+          matrixTitle: "Bảng nhập ca làm 7 ngày",
+          matrixHint:
+            "Trên điện thoại, mỗi dòng sẽ hiển thị thành thẻ để dễ nhập liệu hơn.",
+          clearAll: "Xóa tất cả",
+          day: "Thứ",
+          startTime: "Giờ bắt đầu",
+          endTime: "Giờ kết thúc",
+          hourPlaceholder: "Giờ",
+          minutePlaceholder: "Phút",
+          breakMinutes: "Nghỉ giải lao (phút)",
+          hourlyWage: "Lương theo giờ (JPY)",
+          dailySummary: "Tổng trong ngày",
+          dailyPay: "Lương ngày",
+          lateNight: "Ca đêm",
+          statusTitle: "Trạng thái giờ làm",
+          weeklyHours: "Tổng giờ dự kiến trong tuần",
+          incomeTitle: "Tóm tắt thu nhập",
+          incomeHint:
+            "Tính theo mức lương từng ngày, thời gian nghỉ và phụ cấp ca đêm.",
+          weeklyIncome: "Lương tuần dự kiến",
+          monthlyGross: "Thu nhập tháng trước thuế",
+          withholdingTax: "Thuế tạm khấu trừ",
+          monthlyNet: "Thu nhập tháng sau thuế",
+          notesTitle: "Ghi chú",
+          note1: "Mỗi ngày có thể nhập riêng khung giờ, thời gian nghỉ và mức lương.",
+          note2: "Nếu giờ kết thúc sớm hơn giờ bắt đầu, hệ thống hiểu là ca qua ngày.",
+          note3: "Khoảng 22:00 đến 05:00 được tính thêm 25% phụ cấp ca đêm.",
+          note4: "Nếu thu nhập tháng trước thuế vượt 88.000 JPY, hệ thống tạm khấu trừ 5%.",
+          safe: "An toàn",
+          safeHint: "Tổng giờ làm tuần này hiện đang ở mức an toàn.",
+          normal: "Bình thường",
+          normalHint: "Giờ làm vẫn ổn, nhưng bạn nên tiếp tục theo dõi tổng giờ.",
+          warning: "Cảnh báo",
+          warningHint: "Bạn nên giảm bớt giờ làm vào tuần tới.",
+          danger: "Nguy hiểm",
+          dangerHint: "!! Vượt quá giới hạn pháp luật !! Tổng giờ trong tuần đã vượt 28 giờ.",
+          hoursUnit: "giờ",
+        },
+      };
+
+      const weekdayLabels = {
+        zh: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+        en: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        ja: ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"],
+        vi: ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"],
+      };
+
+      const createInitialRows = () =>
+        Array.from({ length: 7 }, (_, index) => ({
+          dayIndex: index,
+          startHour: "",
+          startMinute: "",
+          endHour: "",
+          endMinute: "",
+          breakMinutes: 0,
+          hourlyWage: 1113,
+        }));
+
+      const formatCurrency = (value) =>
+        new Intl.NumberFormat("ja-JP", {
+          style: "currency",
+          currency: "JPY",
+          maximumFractionDigits: 0,
+        }).format(value);
+
+      const formatHours = (value, unit) => `${value.toFixed(2)} ${unit}`;
+
+      const toMinutes = (hourText, minuteText) => {
+        if (hourText === "" || minuteText === "") return null;
+        return Number(hourText) * 60 + Number(minuteText);
+      };
+
+      const calculateRowSummary = (row) => {
+        const startMinutes = toMinutes(row.startHour, row.startMinute);
+        const endMinutes = toMinutes(row.endHour, row.endMinute);
+        const breakMinutes = Number(row.breakMinutes) || 0;
+        const hourlyWage = Number(row.hourlyWage) || 0;
+
+        if (
+          startMinutes === null ||
+          endMinutes === null ||
+          breakMinutes < 0 ||
+          hourlyWage < 0
+        ) {
+          return {
+            workedHours: 0,
+            lateNightHours: 0,
+            dailyIncome: 0,
+          };
+        }
+
+        let totalMinutes = endMinutes - startMinutes;
+        if (totalMinutes <= 0) {
+          totalMinutes += 24 * 60;
+        }
+
+        const payableMinutes = Math.max(totalMinutes - breakMinutes, 0);
+        const workedHours = payableMinutes / 60;
+
+        let lateNightMinutes = 0;
+        for (let cursor = 0; cursor < payableMinutes; cursor += 1) {
+          const absoluteMinute = (startMinutes + cursor) % (24 * 60);
+          if (absoluteMinute >= 22 * 60 || absoluteMinute < 5 * 60) {
+            lateNightMinutes += 1;
+          }
+        }
+
+        const lateNightHours = lateNightMinutes / 60;
+        const regularHours = Math.max(workedHours - lateNightHours, 0);
+        const dailyIncome =
+          regularHours * hourlyWage + lateNightHours * hourlyWage * 1.25;
+
+        return {
+          workedHours,
+          lateNightHours,
+          dailyIncome,
+        };
+      };
+
+      const getStatusMeta = (weeklyHours, t) => {
+        if (weeklyHours < 20) {
+          return {
+            label: t.safe,
+            hint: t.safeHint,
+            icon: "✓",
+            className:
+              "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-emerald-100",
+          };
+        }
+
+        if (weeklyHours < 25) {
+          return {
+            label: t.normal,
+            hint: t.normalHint,
+            icon: "◔",
+            className:
+              "border-sky-200 bg-sky-50 text-sky-700 shadow-sky-100",
+          };
+        }
+
+        if (weeklyHours <= 28) {
+          return {
+            label: t.warning,
+            hint: t.warningHint,
+            icon: "!",
+            className:
+              "border-amber-200 bg-amber-50 text-amber-700 shadow-amber-100",
+          };
+        }
+
+        return {
+          label: t.danger,
+          hint: t.dangerHint,
+          icon: "!!",
+          className:
+            "border-rose-200 bg-rose-50 text-rose-700 shadow-rose-100",
+        };
+      };
+
+      function TimeSelectorGroup({
+        label,
+        hourValue,
+        minuteValue,
+        onHourChange,
+        onMinuteChange,
+        t,
+      }) {
+        return (
+          <div>
+            <span className="mb-2 block text-sm font-bold text-slate-600">
+              {label}
+            </span>
+            <div className="grid grid-cols-[minmax(92px,1fr)_auto_minmax(92px,1fr)] items-center gap-3">
+              <select
+                value={hourValue}
+                onChange={onHourChange}
+                className="w-full min-w-[92px] appearance-none rounded-2xl border-2 border-slate-300 bg-white px-4 py-4 text-center text-lg font-black tabular-nums text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+              >
+                <option value="">{t.hourPlaceholder}</option>
+                {hourOptions.map((hour) => (
+                  <option key={hour} value={hour}>
+                    {hour}
+                  </option>
+                ))}
+              </select>
+
+              <span className="text-center text-xl font-black text-slate-400">:</span>
+
+              <select
+                value={minuteValue}
+                onChange={onMinuteChange}
+                className="w-full min-w-[92px] appearance-none rounded-2xl border-2 border-slate-300 bg-white px-4 py-4 text-center text-lg font-black tabular-nums text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+              >
+                <option value="">{t.minutePlaceholder}</option>
+                {minuteOptions.map((minute) => (
+                  <option key={minute} value={minute}>
+                    {minute}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        );
+      }
+
+      function WorkHourSchedulerDashboard() {
+        const [rows, setRows] = useState(createInitialRows);
+        const [language, setLanguage] = useState("zh");
+
+        const t = translations[language];
+        const weekdays = weekdayLabels[language];
+
+        const updateRow = (index, field, value) => {
+          setRows((currentRows) =>
+            currentRows.map((row, rowIndex) =>
+              rowIndex === index ? { ...row, [field]: value } : row
+            )
+          );
+        };
+
+        const clearAll = () => {
+          setRows(createInitialRows());
+        };
+
+        const calculatedRows = useMemo(
+          () =>
+            rows.map((row) => ({
+              ...row,
+              dayLabel: weekdays[row.dayIndex],
+              ...calculateRowSummary(row),
+            })),
+          [rows, weekdays]
+        );
+
+        const weeklySummary = useMemo(() => {
+          const weeklyHours = calculatedRows.reduce(
+            (total, row) => total + row.workedHours,
+            0
+          );
+          const weeklyIncome = calculatedRows.reduce(
+            (total, row) => total + row.dailyIncome,
+            0
+          );
+          const monthlyEstimate = weeklyIncome * 4;
+          const tax = monthlyEstimate > 88000 ? monthlyEstimate * 0.05 : 0;
+          const monthlyNet = monthlyEstimate - tax;
+
+          return {
+            weeklyHours,
+            weeklyIncome,
+            monthlyEstimate,
+            tax,
+            monthlyNet,
+          };
+        }, [calculatedRows]);
+
+        const statusMeta = getStatusMeta(weeklySummary.weeklyHours, t);
+
+        return (
+          <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_25%),linear-gradient(135deg,_#f8fafc_0%,_#eef2ff_45%,_#fefce8_100%)] px-4 py-8 text-slate-900">
+            <div className="mx-auto max-w-7xl">
+              <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/85 shadow-2xl shadow-slate-300/30 backdrop-blur">
+                <div className="border-b border-slate-200 px-6 py-8 md:px-10">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="max-w-4xl">
+                      <p className="text-sm font-extrabold uppercase tracking-[0.35em] text-sky-600">
+                        {t.plannerTag}
+                      </p>
+                      <h1 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">
+                        {t.title}
+                      </h1>
+                      <p className="mt-4 text-sm leading-7 text-slate-600 md:text-base">
+                        {t.subtitle}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 xl:min-w-[280px] xl:max-w-[320px]">
+                      <section
+                        className={`rounded-[1.25rem] border p-4 shadow-lg ${statusMeta.className}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/70 text-lg font-black">
+                            {statusMeta.icon}
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em]">
+                              {t.statusTitle}
+                            </p>
+                            <h3 className="mt-1 text-lg font-black">
+                              {statusMeta.label}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <p className="mt-2 text-xs font-medium leading-5">
+                          {statusMeta.hint}
+                        </p>
+
+                        <div className="mt-3 rounded-2xl bg-white/70 px-3 py-3">
+                          <p className="text-[11px] font-bold text-slate-500">
+                            {t.weeklyHours}
+                          </p>
+                          <p className="mt-1 text-2xl font-black tabular-nums text-slate-900">
+                            {formatHours(weeklySummary.weeklyHours, t.hoursUnit)}
+                          </p>
+                        </div>
+                      </section>
+
+                      <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-lg shadow-slate-200/70">
+                        <h3 className="text-lg font-black">{t.incomeTitle}</h3>
+
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              {t.weeklyIncome}
+                            </span>
+                            <span className="text-sm font-black tabular-nums text-slate-900">
+                              {formatCurrency(weeklySummary.weeklyIncome)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              {t.monthlyGross}
+                            </span>
+                            <span className="text-sm font-black tabular-nums text-slate-900">
+                              {formatCurrency(weeklySummary.monthlyEstimate)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              {t.withholdingTax}
+                            </span>
+                            <span className="text-sm font-black tabular-nums text-slate-900">
+                              {formatCurrency(weeklySummary.tax)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-xl bg-slate-900 px-3 py-3">
+                            <span className="text-[11px] font-bold text-slate-300">
+                              {t.monthlyNet}
+                            </span>
+                            <span className="text-base font-black tabular-nums text-white">
+                              {formatCurrency(weeklySummary.monthlyNet)}
+                            </span>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {["zh", "vi", "ja", "en"].map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setLanguage(lang)}
+                        className={`rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                          language === lang
+                            ? "bg-slate-900 text-white shadow-lg shadow-slate-300/60"
+                            : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {translations[lang].languageName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-6 py-6 md:px-10">
+                  <section>
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-black">{t.matrixTitle}</h2>
+                        <p className="mt-1 text-sm text-slate-500">{t.matrixHint}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={clearAll}
+                        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                      >
+                        {t.clearAll}
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {calculatedRows.map((row, index) => (
+                        <article
+                          key={row.dayIndex}
+                          className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm"
+                        >
+                          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(220px,1.15fr)_minmax(220px,0.95fr)] 2xl:items-end">
+                            <div>
+                              <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-400">
+                                {t.day}
+                              </p>
+                              <p className="mt-2 text-xl font-black text-slate-900">
+                                {row.dayLabel}
+                              </p>
+                            </div>
+
+                            <div className="md:col-span-1 2xl:col-span-1">
+                              <TimeSelectorGroup
+                                label={t.startTime}
+                                hourValue={row.startHour}
+                                minuteValue={row.startMinute}
+                                onHourChange={(event) =>
+                                  updateRow(index, "startHour", event.target.value)
+                                }
+                                onMinuteChange={(event) =>
+                                  updateRow(index, "startMinute", event.target.value)
+                                }
+                                t={t}
+                              />
+                            </div>
+
+                            <div className="md:col-span-1 2xl:col-span-1">
+                              <TimeSelectorGroup
+                                label={t.endTime}
+                                hourValue={row.endHour}
+                                minuteValue={row.endMinute}
+                                onHourChange={(event) =>
+                                  updateRow(index, "endHour", event.target.value)
+                                }
+                                onMinuteChange={(event) =>
+                                  updateRow(index, "endMinute", event.target.value)
+                                }
+                                t={t}
+                              />
+                            </div>
+
+                            <label className="block">
+                              <span className="mb-2 block text-sm font-bold text-slate-600">
+                                {t.breakMinutes}
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="15"
+                                value={row.breakMinutes}
+                                onChange={(event) =>
+                                  updateRow(index, "breakMinutes", event.target.value)
+                                }
+                                className="w-full rounded-2xl border-2 border-slate-300 bg-white px-4 py-4 text-center text-lg font-black tabular-nums text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+                              />
+                            </label>
+
+                            <label className="block">
+                              <span className="mb-2 block text-sm font-bold text-slate-600">
+                                {t.hourlyWage}
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={row.hourlyWage}
+                                onChange={(event) =>
+                                  updateRow(index, "hourlyWage", event.target.value)
+                                }
+                                className="w-full min-w-[210px] rounded-2xl border-2 border-slate-400 bg-white px-6 py-5 text-center text-2xl font-black tracking-wide tabular-nums text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+                              />
+                            </label>
+
+                            <div className="rounded-2xl bg-white px-5 py-5 md:col-span-2 2xl:col-span-1">
+                              <p className="text-sm font-bold text-slate-500">
+                                {t.dailySummary}
+                              </p>
+                              <p className="mt-2 text-2xl font-black tabular-nums text-slate-900">
+                                {formatHours(row.workedHours, t.hoursUnit)}
+                              </p>
+                              <p className="mt-2 text-base font-bold tabular-nums text-slate-600">
+                                {t.dailyPay} {formatCurrency(row.dailyIncome)}
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-slate-400">
+                                {t.lateNight} {row.lateNightHours.toFixed(2)} {t.hoursUnit}
+                              </p>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                </div>
+              </section>
+            </div>
+          </main>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <WorkHourSchedulerDashboard />
+      );
+    </script>
+  </body>
+</html>
